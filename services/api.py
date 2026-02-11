@@ -12,19 +12,30 @@ def buscar_agenda():
     response = requests.get(url, headers=headers)
     data = response.json()
 
-    hoje = datetime.now().date()
+    agora = datetime.now().astimezone()
     jogos = []
 
     for jogo in data.get("matches", []):
-        data_jogo = datetime.fromisoformat(jogo["utcDate"].replace("Z", "+00:00")).date()
 
-        if data_jogo >= hoje:
+        data_jogo = datetime.fromisoformat(
+            jogo["utcDate"].replace("Z", "+00:00")
+        )
+
+        data_local = data_jogo.astimezone()
+
+        if data_local.date() >= agora.date():
+
             mandante = jogo["homeTeam"]["name"]
             visitante = jogo["awayTeam"]["name"]
             rodada = jogo.get("matchday", "N/A")
 
+            data_formatada = data_local.strftime("%d/%m/%Y")
+            hora_formatada = data_local.strftime("%H:%M")
+
             jogos.append(
-                f"📅 Rodada {rodada}\n⚽ {mandante} x {visitante}\n"
+                f"📅 {data_formatada} às {hora_formatada}\n"
+                f"🏆 Rodada {rodada}\n"
+                f"⚽ {mandante} x {visitante}\n"
             )
 
     return jogos[:20]
