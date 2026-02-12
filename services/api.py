@@ -1,6 +1,7 @@
 import requests
 from datetime import datetime
 from config import API_KEY
+from zoneinfo import ZoneInfo
 
 def buscar_agenda():
     url = "https://api.football-data.org/v4/competitions/BSA/matches"
@@ -21,7 +22,8 @@ def buscar_agenda():
             jogo["utcDate"].replace("Z", "+00:00")
         )
 
-        data_local = data_jogo.astimezone()
+        fuso_brasil = ZoneInfo("America/Sao_Paulo")
+        data_local = data_jogo.astimezone(fuso_brasil)
 
         if data_local.date() >= agora.date():
 
