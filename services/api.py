@@ -1,67 +1,43 @@
 import requests
-from datetime import datetime, timedelta
-from config import API_KEY, LEAGUE_ID, SEASON
-
-BASE_URL = "https://v3.football.api-sports.io/fixtures"
-
+from datetime import datetime
+from config import API_KEY
+from zoneinfo import ZoneInfo
 
 def buscar_agenda(time_id=None):
+    url = "https://api.football-data.org/v4/competitions/BSA/matches"
+
     headers = {
-        "x-apisports-key": API_KEY
+        "X-Auth-Token": API_KEY
     }
 
-    params = {
-        "league": LEAGUE_ID,
-        "season": SEASON,
-        "status": "NS"
-    }
+    response = requests.get(url, headers=headers)
+    data = response.json()
 
-    response = requests.get(BASE_URL, headers=headers, params=params)
-
-    if response.status_code != 200:
-        return []
-
-    dados = response.json()
+    agora = datetime.now().astimezone()
     jogos = []
 
-    for jogo in dados["response"]:
+    for jogo in data.get("matches", []):
 
-        if time_id:
-            if (
-                jogo["teams"]["home"]["id"] != time_id and
-                jogo["teams"]["away"]["id"] != time_id
-            ):
-                continue
-
-        data_utc = datetime.fromisoformat(
-            jogo["fixture"]["date"].replace("Z", "+00:00")
+        data_jogo = datetime.fromisoformat(
+            jogo["utcDate"].replace("Z", "+00:00")
         )
 
-        data_brasil = data_utc - timedelta(hours=3)
+        fuso_brasil = ZoneInfo("America/Sao_Paulo")
+        data_local = data_jogo.astimezone(fuso_brasil)
 
-        data_formatada = data_brasil.strftime("%d/%m")
-        hora_formatada = data_brasil.strftime("%H:%M")
+        if data_local.date() >= agora.date():
 
-        mandante = jogo["teams"]["home"]["name"]
-        visitante = jogo["teams"]["away"]["name"]
+            mandante = jogo["homeTeam"]["name"]
+            visitante = jogo["awayTeam"]["name"]
+            rodada = jogo.get("matchday", "N/A")
 
-        # Layout diferente se for por time
-        if time_id:
-            mensagem = f"{data_formatada} • {hora_formatada} — {mandante} x {visitante}"
-        else:
-            rodada = jogo["league"]["round"]
-            mensagem = (
-                f"📅 {data_formatada}/{data_brasil.year} às {hora_formatada}\n"
-                f"🏟 {mandante} x {visitante}\n"
-                f"🎯 {rodada}\n"
+            data_formatada = data_local.strftime("%d/%m/%Y")
+            hora_formatada = data_local.strftime("%H:%M")
+
+            jogos.append(
+                f"📅 {data_formatada} às {hora_formatada}\n"
+                f"🏆 Rodada {rodada}\n"
+                f"⚽ {mandante} x {visitante}\n"
             )
-
-        jogos.append(mensagem)
-
-    if not jogos:
-        return []
-
-    if time_id:
-        return jogos[:5]
 
     return jogos[:20]
